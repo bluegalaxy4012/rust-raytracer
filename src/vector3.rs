@@ -1,4 +1,6 @@
-#[derive(Debug)] //momentan
+use std::ops::{Add, Mul, Neg, Sub};
+
+#[derive(Debug, Copy, Clone)] //momentan
 pub struct Vector3 {
     pub x: f64,
     pub y: f64,
@@ -11,13 +13,77 @@ impl PartialEq for Vector3 {
     }
 }
 
+impl Neg for Vector3 {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Vector3 {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
+    }
+}
+
+impl Mul for Vector3 {
+    type Output = Vector3;
+
+    fn mul(self, other: Vector3) -> Vector3 {
+        Vector3 {
+            x: self.x * other.x,
+            y: self.y * other.y,
+            z: self.z * other.z,
+        }
+    }
+}
+
+impl Mul<f64> for Vector3 {
+    type Output = Vector3;
+
+    fn mul(self, scalar: f64) -> Vector3 {
+        Vector3 {
+            x: self.x * scalar,
+            y: self.y * scalar,
+            z: self.z * scalar,
+        }
+    }
+}
+
+impl Add for Vector3 {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self::Output {
+        Vector3 {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        }
+    }
+}
+
+impl Sub for Vector3 {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self::Output {
+        Vector3 {
+            x: self.x - other.x,
+            y: self.y - other.y,
+            z: self.z - other.z,
+        }
+    }
+}
+
 impl Vector3 {
-    pub fn zero() -> Self {
+    pub const fn zero() -> Self {
         Vector3 {
             x: 0.0,
             y: 0.0,
             z: 0.0,
         }
+    }
+
+    pub fn norm(&self) -> f64 {
+        (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
 
     pub fn normalize(&self) -> Self {

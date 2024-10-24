@@ -1,16 +1,14 @@
-//use core::f64;
-
 use crate::scenedata::Cube;
 use crate::scenedata::Plane;
 use crate::vector3::Vector3;
-use crate::Point;
+//use crate::Point;
 use crate::Scene;
 use crate::Sphere;
 
-pub static RAY_ORIGIN: Point = Point::zero();
+pub static RAY_ORIGIN: Vector3 = Vector3::zero();
 
 pub struct Ray {
-    pub origin: Point,
+    pub origin: Vector3,
     pub direction: Vector3,
 }
 
@@ -121,12 +119,11 @@ impl Intersectable for Plane {
         let normal = &(self.normal);
         let denominator = normal.dot(&ray.direction);
 
-        if denominator > 1e-6 {
+        //abs pentru ambele fete ale planului
+        if denominator.abs() > 1e-6 {
             let v = self.p - ray.origin;
-            //assert_ne!(v, Vector3::zero());
             let d = v.dot(&normal) / denominator;
-            //println!("faraden {:?} si {:?}", v, normal);
-            if d >= 0.0 {
+            if d > 0.0 {
                 return Some(d);
             }
         }
