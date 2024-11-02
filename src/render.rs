@@ -5,7 +5,11 @@ use crate::vector3::Vector3;
 use crate::Scene;
 use crate::Sphere;
 
-pub static RAY_ORIGIN: Vector3 = Vector3::zero();
+pub static RAY_ORIGIN: Vector3 = Vector3 {
+    x: 0.0,
+    y: 0.0,
+    z: 0.0,
+};
 
 pub struct Ray {
     pub origin: Vector3,
