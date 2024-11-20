@@ -1,6 +1,8 @@
 use std::ops::{Add, Mul, Neg, Sub};
 
-#[derive(Debug, Copy, Clone)] //momentan
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)] //momentan
 pub struct Vector3 {
     pub x: f64,
     pub y: f64,
@@ -101,5 +103,13 @@ impl Vector3 {
 
     pub fn dot(&self, other: &Self) -> f64 {
         self.x * other.x + self.y * other.y + self.z * other.z
+    }
+
+    pub fn cross(&self, other: &Self) -> Self {
+        Vector3 {
+            x: self.y * other.z - self.z * other.y,
+            y: self.z * other.x - self.x * other.z,
+            z: self.x * other.y - self.y * other.x,
+        }
     }
 }

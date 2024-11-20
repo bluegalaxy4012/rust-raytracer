@@ -1,12 +1,15 @@
-use std::ops::{Add, Mul};
-
 use crate::render::{Intersectable, Ray};
 use crate::vector3::Vector3;
-use image::Rgba;
+use image::{open, DynamicImage, GenericImageView, Rgba};
+use serde::{de, Deserialize, Deserializer, Serialize};
+use std::ops::{Add, Mul};
+use std::path::PathBuf;
 
 pub const AMBIENT_LIGHT_INTENSITY: f32 = 0.075;
 
+#[derive(Serialize, Deserialize)]
 pub struct Scene {
+    pub ray_origin: Vector3,
     pub width: u32,
     pub height: u32,
     pub fov: f64,
@@ -14,48 +17,84 @@ pub struct Scene {
     pub objects: Vec<Element>,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct DirectionalLight {
     pub direction: Vector3,
     pub color: Color,
     pub intensity: f32,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct PointLight {
     pub point: Vector3,
     pub color: Color,
     pub intensity: f32,
 }
 
+#[derive(Serialize, Deserialize)]
 pub enum Light {
     Directional(DirectionalLight),
     Point(PointLight),
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct Material {
+    pub coloration: Coloration,
+    pub albedo: f32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Texture {
+    pub path: PathBuf,
+
+    #[serde(skip_serializing, skip_deserializing, default = "default_texture")]
+    pub texture: DynamicImage,
+}
+
+fn default_texture() -> DynamicImage {
+    DynamicImage::new_rgb8(0, 0)
+}
+
+pub struct TextureCoords {
+    pub x: f32,
+    pub y: f32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum Coloration {
+    Color(Color),
+    Texture(#[serde(deserialize_with = "load_texture")] Texture),
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct Sphere {
     pub center: Vector3,
     pub radius: f64,
-    pub color: Color,
+    pub material: Material,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Cube {
     pub center: Vector3,
     pub sidelength: f64,
-    pub color: Color,
+    pub material: Material,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Plane {
     pub p: Vector3,
     pub normal: Vector3,
-    pub color: Color,
+    pub material: Material,
 }
 
+#[derive(Serialize, Deserialize)]
 pub enum Element {
     Sphere(Sphere),
     Cube(Cube),
     Plane(Plane),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Color {
     pub red: f32,
     pub green: f32,
@@ -108,11 +147,60 @@ impl Color {
         ])
     }
 
+    pub fn from_rgb(rgba: Rgba<u8>) -> Color {
+        Color {
+            red: rgba[0] as f32 / 255.0,
+            green: rgba[1] as f32 / 255.0,
+            blue: rgba[2] as f32 / 255.0,
+        }
+    }
+
     pub fn clamp(&self) -> Color {
         Color {
             red: self.red.clamp(0.0, 1.0),
             green: self.green.clamp(0.0, 1.0),
             blue: self.blue.clamp(0.0, 1.0),
+        }
+    }
+}
+
+fn wrap(val: f32, max: u32) -> u32 {
+    let signed_max = max as i32;
+    let wrapped_coord = (val * max as f32) as i32 % signed_max;
+    if wrapped_coord < 0 {
+        (wrapped_coord + signed_max) as u32
+    } else {
+        wrapped_coord as u32
+    }
+}
+
+fn load_texture<'de, D>(deserializer: D) -> Result<Texture, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let path: PathBuf = PathBuf::deserialize(deserializer)?;
+
+    match open(&path) {
+        Ok(img) => Ok(Texture { path, texture: img }),
+        Err(err) => Err(de::Error::custom(format!(
+            "Unable to open texture file {:?}: {}",
+            path, err
+        ))),
+    }
+}
+
+impl Coloration {
+    pub fn color(&self, texture_coords: &TextureCoords) -> Color {
+        match *self {
+            Coloration::Color(ref c) => c.clone(),
+            Coloration::Texture(ref tex) => {
+                let x = wrap(texture_coords.x, tex.texture.width());
+                let y = wrap(texture_coords.y, tex.texture.height());
+                Color::from_rgb(tex.texture.get_pixel(x, y))
+            } /* Color::from_rgb(tex.get_pixel(
+                  wrap(texture_coords.x, tex.width()),
+                  wrap(texture_coords.y, tex.height()),
+              )), */
         }
     }
 }
@@ -173,82 +261,34 @@ impl Light {
 }
 
 impl Element {
+    /*
     pub fn color(&self) -> &Color {
         match *self {
-            Element::Sphere(ref s) => &(s.color),
-            Element::Cube(ref c) => &(c.color),
-            Element::Plane(ref p) => &(p.color),
+            Element::Sphere(ref s) => &(s.material.color),
+            Element::Cube(ref c) => &(c.material.color),
+            Element::Plane(ref p) => &(p.material.color),
         }
     }
 
-    pub fn surface_normal(&self, hit_point: &Vector3) -> Vector3 {
+
+    pub fn albedo(&self) -> f32 {
+        1.0
+    }
+    */
+    pub fn color(&self, texture_coords: &TextureCoords) -> Color {
         match *self {
-            Element::Sphere(ref s) => (*hit_point - s.center).normalize(),
-            Element::Cube(ref c) => {
-                let half_sidelength = c.sidelength / 2.0;
-                let min_x = c.center.x - half_sidelength;
-                let max_x = c.center.x + half_sidelength;
-                let min_y = c.center.y - half_sidelength;
-                let max_y = c.center.y + half_sidelength;
-                let min_z = c.center.z - half_sidelength;
-                let max_z = c.center.z + half_sidelength;
-
-                let d_min_x = (hit_point.x - min_x).abs();
-                let d_max_x = (hit_point.x - max_x).abs();
-                let d_min_y = (hit_point.y - min_y).abs();
-                let d_max_y = (hit_point.y - max_y).abs();
-                let d_min_z = (hit_point.z - min_z).abs();
-                let d_max_z = (hit_point.z - max_z).abs();
-
-                let min_d = d_min_x
-                    .min(d_max_x)
-                    .min(d_min_y.min(d_max_y))
-                    .min(d_min_z.min(d_max_z));
-
-                if min_d == d_min_x {
-                    Vector3 {
-                        x: -1.0,
-                        y: 0.0,
-                        z: 0.0,
-                    }
-                } else if min_d == d_max_x {
-                    Vector3 {
-                        x: 1.0,
-                        y: 0.0,
-                        z: 0.0,
-                    }
-                } else if min_d == d_min_y {
-                    Vector3 {
-                        x: 0.0,
-                        y: -1.0,
-                        z: 0.0,
-                    }
-                } else if min_d == d_max_y {
-                    Vector3 {
-                        x: 0.0,
-                        y: 1.0,
-                        z: 0.0,
-                    }
-                } else if min_d == d_min_z {
-                    Vector3 {
-                        x: 0.0,
-                        y: 0.0,
-                        z: -1.0,
-                    }
-                } else {
-                    Vector3 {
-                        x: 0.0,
-                        y: 0.0,
-                        z: 1.0,
-                    }
-                }
-            }
-            Element::Plane(ref p) => -p.normal,
+            Element::Sphere(ref s) => s.material.coloration.color(texture_coords),
+            Element::Cube(ref c) => c.material.coloration.color(texture_coords),
+            Element::Plane(ref p) => p.material.coloration.color(texture_coords),
         }
     }
 
     pub fn albedo(&self) -> f32 {
-        1.0
+        match *self {
+            Element::Sphere(ref s) => s.material.albedo,
+            Element::Cube(ref c) => c.material.albedo,
+            Element::Plane(ref p) => p.material.albedo,
+        }
     }
 }
 
@@ -258,6 +298,22 @@ impl Intersectable for Element {
             Element::Sphere(ref s) => s.intersect(ray),
             Element::Cube(ref c) => c.intersect(ray),
             Element::Plane(ref p) => p.intersect(ray),
+        }
+    }
+
+    fn texture_coords(&self, intersection_point: &Vector3) -> TextureCoords {
+        match *self {
+            Element::Sphere(ref s) => s.texture_coords(intersection_point),
+            Element::Cube(ref c) => c.texture_coords(intersection_point),
+            Element::Plane(ref p) => p.texture_coords(intersection_point),
+        }
+    }
+
+    fn surface_normal(&self, intersection_point: &Vector3) -> Vector3 {
+        match *self {
+            Element::Sphere(ref s) => s.surface_normal(intersection_point),
+            Element::Cube(ref c) => c.surface_normal(intersection_point),
+            Element::Plane(ref p) => p.surface_normal(intersection_point),
         }
     }
 }
@@ -273,6 +329,7 @@ impl Scene {
     pub fn get_color(&self, ray: &Ray, intersection: &Intersection) -> Color {
         let intersection_point: Vector3 = ray.origin + (ray.direction * intersection.distance);
         let surface_normal = intersection.object.surface_normal(&intersection_point);
+        let texture_coords = intersection.object.texture_coords(&intersection_point);
 
         let mut color = Color {
             red: 0.0,
@@ -295,12 +352,13 @@ impl Scene {
                 (surface_normal.dot(&dir_to_light) as f32).max(0.0)
                     * light.intensity(&intersection_point)
             };
+
             let light_reflected = intersection.object.albedo() / std::f32::consts::PI;
 
             //println!("int {:?} refl {:?}", light_intensity, light_reflected);
 
             color = color
-                + intersection.object.color().clone()
+                + intersection.object.color(&texture_coords).clone()
                     * light.color().clone()
                     * light_intensity
                     * light_reflected;

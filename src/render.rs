@@ -1,15 +1,10 @@
 use crate::scenedata::Cube;
 use crate::scenedata::Plane;
+use crate::scenedata::TextureCoords;
 use crate::vector3::Vector3;
 //use crate::Point;
 use crate::Scene;
 use crate::Sphere;
-
-pub static RAY_ORIGIN: Vector3 = Vector3 {
-    x: 0.0,
-    y: 0.0,
-    z: 0.0,
-};
 
 pub struct Ray {
     pub origin: Vector3,
@@ -27,7 +22,7 @@ impl Ray {
         let y_sensor = (1.0 - ((y as f64 + 0.5) / scene.height as f64) * 2.0) * fov_fix; // y poz e in jos
 
         Ray {
-            origin: RAY_ORIGIN,
+            origin: scene.ray_origin,
             direction: Vector3 {
                 x: x_sensor,
                 y: y_sensor,
@@ -40,6 +35,8 @@ impl Ray {
 
 pub trait Intersectable {
     fn intersect(&self, ray: &Ray) -> Option<f64>;
+    fn surface_normal(&self, intersection_point: &Vector3) -> Vector3;
+    fn texture_coords(&self, intersection_point: &Vector3) -> TextureCoords;
 }
 
 impl Intersectable for Sphere {
@@ -72,6 +69,19 @@ impl Intersectable for Sphere {
         Some(distance)
 
         //d < self.radius * self.radius //si = ?
+    }
+
+    fn texture_coords(&self, intersection_point: &Vector3) -> TextureCoords {
+        let intersection_vec = *intersection_point - self.center;
+        TextureCoords {
+            x: (1.0 + (intersection_vec.z.atan2(intersection_vec.x) as f32) / std::f32::consts::PI)
+                / 2.0,
+            y: (intersection_vec.y / self.radius).acos() as f32 / std::f32::consts::PI,
+        }
+    }
+
+    fn surface_normal(&self, intersection_point: &Vector3) -> Vector3 {
+        (*intersection_point - self.center).normalize()
     }
 }
 
@@ -116,6 +126,136 @@ impl Intersectable for Cube {
 
         Some(t_enter)
     }
+
+    //cum am impl si pentru sfera
+    fn texture_coords(&self, intersection_point: &Vector3) -> TextureCoords {
+        let half_sidelength = self.sidelength / 2.0;
+        let intersection_vec = *intersection_point - self.center;
+        let abs_x = intersection_vec.x.abs();
+        let abs_y = intersection_vec.y.abs();
+        let abs_z = intersection_vec.z.abs();
+
+        let face = if abs_x > abs_y && abs_x > abs_z {
+            if intersection_vec.x > 0.0 {
+                0
+            } else {
+                1
+            }
+        } else if abs_y > abs_z {
+            if intersection_vec.y > 0.0 {
+                2
+            } else {
+                3
+            }
+        } else if intersection_vec.z > 0.0 {
+            4
+        } else {
+            5
+        };
+
+        let mut texture_coords = TextureCoords { x: 0.0, y: 0.0 };
+
+        match face {
+            0 => {
+                texture_coords.x =
+                    ((intersection_vec.z + half_sidelength) / self.sidelength) as f32;
+                texture_coords.y =
+                    ((intersection_vec.y + half_sidelength) / self.sidelength) as f32;
+            }
+            1 => {
+                texture_coords.x =
+                    ((intersection_vec.z + half_sidelength) / self.sidelength) as f32;
+                texture_coords.y =
+                    ((intersection_vec.y + half_sidelength) / self.sidelength) as f32;
+            }
+            2 => {
+                texture_coords.x =
+                    ((intersection_vec.x + half_sidelength) / self.sidelength) as f32;
+                texture_coords.y =
+                    ((intersection_vec.z + half_sidelength) / self.sidelength) as f32;
+            }
+            3 => {
+                texture_coords.x =
+                    ((intersection_vec.x + half_sidelength) / self.sidelength) as f32;
+                texture_coords.y =
+                    ((intersection_vec.z + half_sidelength) / self.sidelength) as f32;
+            }
+            4 => {
+                texture_coords.x =
+                    ((intersection_vec.x + half_sidelength) / self.sidelength) as f32;
+                texture_coords.y =
+                    ((intersection_vec.y + half_sidelength) / self.sidelength) as f32;
+            }
+            5 => {
+                texture_coords.x =
+                    ((intersection_vec.x + half_sidelength) / self.sidelength) as f32;
+                texture_coords.y =
+                    ((intersection_vec.y + half_sidelength) / self.sidelength) as f32;
+            }
+            _default => {}
+        }
+        texture_coords
+    }
+
+    fn surface_normal(&self, intersection_point: &Vector3) -> Vector3 {
+        let half_sidelength = self.sidelength / 2.0;
+        let min_x = self.center.x - half_sidelength;
+        let max_x = self.center.x + half_sidelength;
+        let min_y = self.center.y - half_sidelength;
+        let max_y = self.center.y + half_sidelength;
+        let min_z = self.center.z - half_sidelength;
+        let max_z = self.center.z + half_sidelength;
+
+        let d_min_x = (intersection_point.x - min_x).abs();
+        let d_max_x = (intersection_point.x - max_x).abs();
+        let d_min_y = (intersection_point.y - min_y).abs();
+        let d_max_y = (intersection_point.y - max_y).abs();
+        let d_min_z = (intersection_point.z - min_z).abs();
+        let d_max_z = (intersection_point.z - max_z).abs();
+
+        let min_d = d_min_x
+            .min(d_max_x)
+            .min(d_min_y.min(d_max_y))
+            .min(d_min_z.min(d_max_z));
+
+        if min_d == d_min_x {
+            Vector3 {
+                x: -1.0,
+                y: 0.0,
+                z: 0.0,
+            }
+        } else if min_d == d_max_x {
+            Vector3 {
+                x: 1.0,
+                y: 0.0,
+                z: 0.0,
+            }
+        } else if min_d == d_min_y {
+            Vector3 {
+                x: 0.0,
+                y: -1.0,
+                z: 0.0,
+            }
+        } else if min_d == d_max_y {
+            Vector3 {
+                x: 0.0,
+                y: 1.0,
+                z: 0.0,
+            }
+        } else if min_d == d_min_z {
+            Vector3 {
+                x: 0.0,
+                y: 0.0,
+                z: -1.0,
+            }
+        } else {
+            Vector3 {
+                x: 0.0,
+                y: 0.0,
+                z: 1.0,
+            }
+        }
+    }
 }
 
 impl Intersectable for Plane {
@@ -132,5 +272,33 @@ impl Intersectable for Plane {
             }
         }
         None
+    }
+
+    fn texture_coords(&self, intersection_point: &Vector3) -> TextureCoords {
+        let mut x_axis = self.normal.cross(&Vector3 {
+            x: 0.0,
+            y: 0.0,
+            z: 1.0,
+        });
+
+        if x_axis.norm() < 0.01 {
+            x_axis = self.normal.cross(&Vector3 {
+                x: 0.0,
+                y: 1.0,
+                z: 0.0,
+            });
+        }
+
+        let y_axis = self.normal.cross(&x_axis);
+
+        let intersection_vec = *intersection_point - self.p;
+        TextureCoords {
+            x: intersection_vec.dot(&x_axis) as f32,
+            y: intersection_vec.dot(&y_axis) as f32,
+        }
+    }
+
+    fn surface_normal(&self, _intersection_point: &Vector3) -> Vector3 {
+        -self.normal
     }
 }

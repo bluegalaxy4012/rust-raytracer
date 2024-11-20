@@ -1,0 +1,155 @@
+{
+  "ray_origin": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "width": 1200,
+  "height": 900,
+  "fov": 100.0,
+  "lights": [
+    {
+      "Point": {
+        "point": {
+          "x": 1.0,
+          "y": 0.25,
+          "z": 0.25
+        },
+        "color": {
+          "red": 1.0,
+          "green": 1.0,
+          "blue": 0.8
+        },
+        "intensity": 160.75
+      }
+    }
+  ],
+  "objects": [
+    {
+      "Sphere": {
+        "center": {
+          "x": 1.0,
+          "y": -3.0,
+          "z": -5.0
+        },
+        "radius": 1.0,
+        "material": {
+          "coloration": {
+            "Color": {
+              "red": 1.0,
+              "green": 0.5,
+              "blue": 0.0
+            }
+          },
+          "albedo": 1.0
+        }
+      }
+    },
+    {
+      "Sphere": {
+        "center": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": -10.0
+        },
+        "radius": 2.0,
+        "material": {
+          "coloration": {
+            "Color": {
+              "red": 1.0,
+              "green": 0.0,
+              "blue": 0.0
+            }
+          },
+          "albedo": 0.18
+        }
+      }
+    },
+    {
+      "Sphere": {
+        "center": {
+          "x": 8.0,
+          "y": 5.0,
+          "z": -15.0
+        },
+        "radius": 2.0,
+        "material": {
+          "coloration": {
+            "Color": {
+              "red": 0.0,
+              "green": 1.0,
+              "blue": 0.0
+            }
+          },
+          "albedo": 0.98
+        }
+      }
+    },
+    {
+      "Cube": {
+        "center": {
+          "x": -0.5,
+          "y": -1.0,
+          "z": -2.2
+        },
+        "sidelength": 1.3,
+        "material": {
+          "coloration": {
+            "Texture": {
+              "path": "resources/rainbowtexture.png"
+            }
+          },
+          "albedo": 1.0
+        }
+      }
+    },
+    {
+      "Plane": {
+        "p": {
+          "x": 0.0,
+          "y": -3.0,
+          "z": -4.0
+        },
+        "normal": {
+          "x": 0.0,
+          "y": -1.0,
+          "z": 0.0
+        },
+        "material": {
+          "coloration": {
+            "Color": {
+              "red": 0.12,
+              "green": 0.12,
+              "blue": 0.12
+            }
+          },
+          "albedo": 1.0
+        }
+      }
+    },
+    {
+      "Plane": {
+        "p": {
+          "x": 0.0,
+          "y": -3.0,
+          "z": -20.0
+        },
+        "normal": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": -1.0
+        },
+        "material": {
+          "coloration": {
+            "Color": {
+              "red": 0.17,
+              "green": 0.36,
+              "blue": 0.5
+            }
+          },
+          "albedo": 1.0
+        }
+      }
+    }
+  ]
+}

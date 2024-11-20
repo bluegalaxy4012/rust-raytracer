@@ -1,122 +1,296 @@
 pub mod render;
 pub mod scenedata;
+pub mod scenemanager;
 pub mod vector3;
 
 use image::{DynamicImage, GenericImage, Rgba};
 use minifb::{Key, Window, WindowOptions};
 use render::Ray;
-use scenedata::{Color, Cube, Element, Light, Plane, PointLight, Scene, Sphere};
+use scenedata::{
+    Color, Coloration, Cube, Element, Light, Material, Plane, PointLight, Scene, Sphere, Texture,
+};
+use scenemanager::SceneManager;
+use std::path::PathBuf;
 use vector3::Vector3;
 
 #[test]
 fn test_render() {
-    let scene = Scene {
-        width: 800,
-        height: 600,
-        fov: 90.0,
-        lights: vec![Light::Point(PointLight {
-            point: Vector3 {
-                x: 1.00,
-                y: 0.25,
-                z: 0.25,
+    //in the future , interactable scene manager , moving camera etc
+
+    let rainbowtexture = Texture {
+        path: PathBuf::from("resources/rainbowtexture.png"),
+        texture: image::open("resources/rainbowtexture.png").expect("failed to open texture"),
+    };
+    /*
+        let scene = Scene {
+            width: 1200,
+            height: 900,
+            fov: 100.0,
+            ray_origin: Vector3 {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
             },
-            intensity: 160.75,
-            color: Color {
-                red: 1.0,
-                green: 1.0,
-                blue: 0.8,
-            },
-        })],
-        objects: vec![
-            Element::Sphere(Sphere {
-                center: Vector3 {
-                    x: 1.0,
-                    y: -3.0,
-                    z: -5.0,
+            lights: vec![Light::Point(PointLight {
+                point: Vector3 {
+                    x: 1.00,
+                    y: 0.25,
+                    z: 0.25,
                 },
-                radius: 1.0,
+                intensity: 160.75,
                 color: Color {
+                    red: 1.0,
+                    green: 1.0,
+                    blue: 0.8,
+                },
+            })],
+            objects: vec![
+                Element::Sphere(Sphere {
+                    center: Vector3 {
+                        x: 1.0,
+                        y: -3.0,
+                        z: -5.0,
+                    },
+                    radius: 1.0,
+                    material: Material {
+                        coloration: Coloration::Color(Color {
+                            red: 1.0,
+                            green: 0.5,
+                            blue: 0.0,
+                        }),
+                        albedo: 1.00,
+                    },
+                }),
+                Element::Sphere(Sphere {
+                    center: Vector3 {
+                        x: 0.0,
+                        y: 0.0,
+                        z: -10.0,
+                    },
+                    radius: 2.0,
+                    material: Material {
+                        coloration: Coloration::Color(Color {
+                            red: 1.0,
+                            green: 0.0,
+                            blue: 0.0,
+                        }),
+                        albedo: 0.18,
+                    },
+                }),
+                Element::Sphere(Sphere {
+                    center: Vector3 {
+                        x: 8.0,
+                        y: 5.0,
+                        z: -15.0,
+                    },
+                    radius: 2.0,
+                    material: Material {
+                        coloration: Coloration::Color(Color {
+                            red: 0.0,
+                            green: 1.0,
+                            blue: 0.0,
+                        }),
+                        albedo: 0.98,
+                    },
+                }),
+                Element::Cube(Cube {
+                    center: Vector3 {
+                        x: -0.5,
+                        y: -1.0,
+                        z: -2.2,
+                    },
+                    sidelength: 1.3,
+                    material: Material {
+                        /*                    color: Color {
+                                                red: 0.0,
+                                                green: 0.0,
+                                                blue: 1.0,
+                        */
+                        coloration: Coloration::Texture(rainbowtexture),
+                        albedo: 1.0,
+                    },
+                }),
+                Element::Plane(Plane {
+                    p: Vector3 {
+                        x: 0.0,
+                        y: -3.0,
+                        z: -4.0,
+                    },
+                    normal: Vector3 {
+                        x: 0.0,
+                        y: -1.0,
+                        z: 0.0,
+                    },
+                    material: Material {
+                        coloration: Coloration::Color(Color {
+                            red: 0.12,
+                            green: 0.12,
+                            blue: 0.12,
+                        }),
+                        albedo: 1.0,
+                    },
+                }),
+                Element::Plane(Plane {
+                    p: Vector3 {
+                        x: 0.0,
+                        y: -3.0,
+                        z: -20.0,
+                    },
+                    normal: Vector3 {
+                        x: 0.0,
+                        y: 0.0,
+                        z: -1.0,
+                    },
+                    material: Material {
+                        coloration: Coloration::Color(Color {
+                            red: 0.17,
+                            green: 0.36,
+                            blue: 0.5,
+                        }),
+                        albedo: 1.0,
+                    },
+                }),
+            ],
+        };
+    */
+    //make the light/objects vector as above
+    //
+    let lights = vec![Light::Point(PointLight {
+        point: Vector3 {
+            x: 1.00,
+            y: 0.25,
+            z: 0.25,
+        },
+        intensity: 160.75,
+        color: Color {
+            red: 1.0,
+            green: 1.0,
+            blue: 0.8,
+        },
+    })];
+
+    let objects = vec![
+        Element::Sphere(Sphere {
+            center: Vector3 {
+                x: 1.0,
+                y: -3.0,
+                z: -5.0,
+            },
+            radius: 1.0,
+            material: Material {
+                coloration: Coloration::Color(Color {
                     red: 1.0,
                     green: 0.5,
                     blue: 0.0,
-                },
-            }),
-            Element::Sphere(Sphere {
-                center: Vector3 {
-                    x: 0.0,
-                    y: 0.0,
-                    z: -10.0,
-                },
-                radius: 2.0,
-                color: Color {
+                }),
+                albedo: 1.00,
+            },
+        }),
+        Element::Sphere(Sphere {
+            center: Vector3 {
+                x: 0.0,
+                y: 0.0,
+                z: -10.0,
+            },
+            radius: 2.0,
+            material: Material {
+                coloration: Coloration::Color(Color {
                     red: 1.0,
                     green: 0.0,
                     blue: 0.0,
-                },
-            }),
-            Element::Sphere(Sphere {
-                center: Vector3 {
-                    x: 8.0,
-                    y: 5.0,
-                    z: -15.0,
-                },
-                radius: 2.0,
-                color: Color {
+                }),
+                albedo: 0.18,
+            },
+        }),
+        Element::Sphere(Sphere {
+            center: Vector3 {
+                x: 8.0,
+                y: 5.0,
+                z: -15.0,
+            },
+            radius: 2.0,
+            material: Material {
+                coloration: Coloration::Color(Color {
                     red: 0.0,
                     green: 1.0,
                     blue: 0.0,
-                },
-            }),
-            Element::Cube(Cube {
-                center: Vector3 {
-                    x: -0.5,
-                    y: -1.0,
-                    z: -2.2,
-                },
-                sidelength: 1.3,
-                color: Color {
-                    red: 0.0,
-                    green: 0.0,
-                    blue: 1.0,
-                },
-            }),
-            Element::Plane(Plane {
-                p: Vector3 {
-                    x: 0.0,
-                    y: -3.0,
-                    z: -4.0,
-                },
-                normal: Vector3 {
-                    x: 0.0,
-                    y: -1.0,
-                    z: 0.0,
-                },
-                color: Color {
+                }),
+                albedo: 0.98,
+            },
+        }),
+        Element::Cube(Cube {
+            center: Vector3 {
+                x: -0.5,
+                y: -1.0,
+                z: -2.2,
+            },
+            sidelength: 1.3,
+            material: Material {
+                coloration: Coloration::Texture(rainbowtexture),
+                albedo: 1.0,
+            },
+        }),
+        Element::Plane(Plane {
+            p: Vector3 {
+                x: 0.0,
+                y: -3.0,
+                z: -4.0,
+            },
+            normal: Vector3 {
+                x: 0.0,
+                y: -1.0,
+                z: 0.0,
+            },
+            material: Material {
+                coloration: Coloration::Color(Color {
                     red: 0.12,
                     green: 0.12,
                     blue: 0.12,
-                },
-            }),
-            Element::Plane(Plane {
-                p: Vector3 {
-                    x: 0.0,
-                    y: -3.0,
-                    z: -20.0,
-                },
-                normal: Vector3 {
-                    x: 0.0,
-                    y: 0.0,
-                    z: -1.0,
-                },
-                color: Color {
+                }),
+                albedo: 1.0,
+            },
+        }),
+        Element::Plane(Plane {
+            p: Vector3 {
+                x: 0.0,
+                y: -3.0,
+                z: -20.0,
+            },
+            normal: Vector3 {
+                x: 0.0,
+                y: 0.0,
+                z: -1.0,
+            },
+            material: Material {
+                coloration: Coloration::Color(Color {
                     red: 0.17,
                     green: 0.36,
                     blue: 0.5,
-                },
-            }),
-        ],
-    };
+                }),
+                albedo: 1.0,
+            },
+        }),
+    ];
 
+    let mut scenemgr = SceneManager::new(
+        1200,
+        900,
+        100.0,
+        Vector3 {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        lights,
+        objects,
+    );
+    scenemgr.save_to_json("resources/scene1.json");
+
+    //let scenemgr =
+    //    SceneManager::load_from_json("resources/scene1.json").expect("failed to load scene");
+
+    //save scene to json
+    let scene = scenemgr.scene;
     let img = render(&scene);
 
     assert_eq!(scene.width, img.width());
@@ -139,6 +313,14 @@ fn test_render() {
         window
             .update_with_buffer(&buffer, scene.width as usize, scene.height as usize)
             .unwrap();
+
+        //handle_input(&mut window, &scenemgr);
+    }
+}
+
+fn handle_input(window: &mut Window, scenemgr: &mut SceneManager) {
+    if window.is_key_down(Key::W) {
+        scenemgr.scene.ray_origin.z += 0.1;
     }
 }
 
